@@ -13,37 +13,39 @@ from pylatex import *
 from pylatex.base_classes import *
 from pylatex.utils import *
 
-class MyEnvironment(Environment):
-    def dumps(self):
-        # override method dumps
+# class MyEnvironment(Environment):
+#     def dumps(self):
+#         # override method dumps
 
-        content = self.dumps_content()
-        if not content.strip() and self.omit_if_empty:
-            return ''
+#         content = self.dumps_content()
+#         if not content.strip() and self.omit_if_empty:
+#             return ''
 
-        string = ''
+#         string = ''
 
-        # Something other than None needs to be used as extra arguments, that
-        # way the options end up behind the latex_name argument.
-        if self.arguments is None:
-            extra_arguments = Arguments()
-        else:
-            extra_arguments = self.arguments
+#         # Something other than None needs to be used as extra arguments, that
+#         # way the options end up behind the latex_name argument.
+#         if self.arguments is None:
+#             extra_arguments = Arguments()
+#         else:
+#             extra_arguments = self.arguments
 
-        begin = Command('begin', self.start_arguments, self.options,
-                        extra_arguments=extra_arguments)
-        begin.arguments._positional_args.insert(0, self.latex_name)
-        string += begin.dumps() + '%\n'
+#         begin = Command('begin', self.start_arguments, self.options,
+#                         extra_arguments=extra_arguments)
+#         begin.arguments._positional_args.insert(0, self.latex_name)
+#         string += begin.dumps() + '%\n'
 
-        string += content + '%\n'
+#         string += content + '%\n'
 
-        string += Command('end', self.latex_name).dumps()
+#         string += Command('end', self.latex_name).dumps()
 
-        return string
+#         return string
 
 
-class Align(MyEnvironment):
-    """A class to wrap LaTeX's align environment."""
+class Align(Environment):
+    """A class to wrap LaTeX's align environment.
+    align is the base of the math equation environment
+    """
     escape = False
     content_separator = "\\\\\n"
     _star_latex_name = True
@@ -52,10 +54,10 @@ class Align(MyEnvironment):
         self.append(dumps_list([elm for elm in row], token=' & ', escape=False))
 
 
-class Cases(MyEnvironment):
-    """A class to wrap LaTeX's align environment."""
-    escape = False
-    content_separator = "\\\\\n"
+# class Cases(MyEnvironment):
+#     """A class to wrap LaTeX's align environment."""
+#     escape = False
+#     content_separator = "\\\\\n"
 
 
 
@@ -159,49 +161,37 @@ def vector(x, mtype='p', *args, **kwargs):
         x = np.array([x])
     return Matrix(x, mtype=mtype, *args, **kwargs)
 
-class Determinant(Matrix):
-    '''Determinant < Matrix
-    data: square matrix
-    '''
-    def __init__(self, data, *args, **kwargs):
-        if isinstance(data, (tuple, list)):
-            data = np.array(data)
-        assert data.ndim == 2 and data.shape[1] == data.shape[0]
-        super(Determinant, self).__init__(data, mtype='v', *args, **kwargs)
 
-    @property
-    def T(self):
-        self.data = np.transpose(self.data)
-        return self
+class Determinant(Matrix):
+    """Determinant < Matrix."""
+
+    def __init__(self, matrix, *args, **kwargs):
+        """
+        Args
+        ---
+        matrix: numpy.ndarray
+        """
+        super(Determinant, self).__init__(matrix, mtype='v', *args, **kwargs)
+        assert self.matrix.ndim == 2 and self.matrix.shape[1] == self.matrix.shape[0]
+
 
 class Vector(Matrix):
     '''Vector < Matrix
-    data: array(1D) | tuple | list (of numbers)
+    vec: array(1D) | tuple | list (of numbers)
     '''
-    def __init__(self, data, mtype='p', *args, **kwargs):
-        if isinstance(data, np.ndarray):
-            data = data
-        elif isinstance(data, (tuple, list)):
-            data = np.array(data)
-        if data.ndim == 1:
-            data = data.reshape(1, data.shape[0])
-        super(Vector, self).__init__(data, mtype=mtype, *args, **kwargs)
-
-    @property
-    def T(self):
-        self.data = np.transpose(self.data)
-        return self
+    def __init__(self, vec, mtype='p', *args, **kwargs):
+        if vec.ndim == 1:
+            vec = vec.reshape(1, vec.shape[0])
+        else:
+            vec = vec.reshape(1, np.prod(vec.shape))
+        super(Vector, self).__init__(matrix=vec, mtype=mtype, *args, **kwargs)
 
 
-def colvector(x, mtype='p', *args, **kwargs):
-    # x is a matrix(1*n-shape) or vector(n-dim) or a list of numbers
-    # x -> a colume vector in latex code
-    if isinstance(x, np.ndarray):
-        assert data.ndim == 1, 'make sure data.ndim == 1'
-        x = x.reshape(x.shape[0], 1)
-    elif isinstance(x, (tuple, list)):
-        x = np.array([[xi] for xi in x])
-    return Matrix(x, mtype=mtype, *args, **kwargs)
+class ColumnVector(Vector):
+    '''Column Vector'''
+    def __init__(self, *args, **kwargs):
+        super(ColumnVector, self).__init__(*args, **kwargs)
+        self.matrix = np.transpose(self.matrix)
 
 
 def newcommand(name, definition, n=-1, default=None, prefix=''):
@@ -223,8 +213,7 @@ def newcommand(name, definition, n=-1, default=None, prefix=''):
     Returns:
         UnsafeCommand
     '''
-    if prefix:
-        newcmd = prefix + 'newcommand'
+    newcmd = prefix + 'newcommand'
     if n < 0:
         import re
         rx = re.compile('(?<=#)\d')
@@ -235,3 +224,64 @@ def newcommand(name, definition, n=-1, default=None, prefix=''):
         return UnsafeCommand(newcmd, arguments='\\%s'%name, options=n, extra_arguments=definition)
     else:
         return UnsafeCommand(newcmd, arguments='\\%s'%name, options=SpecialOptions(n, default), extra_arguments=definition)
+
+
+class Slash:
+    """Shorthand for Command."""
+
+    escape = False
+
+    def __getattr__(self, command):
+        def f(*args, **kwargs):
+            args = Arguments(*args)
+            args.escape = self.escape
+            return Command(command, arguments=args, **kwargs)
+        return f
+
+slash = Slash()  # slash.frac('x', 'y').dumps() == '\frac{x}{y}'
+
+def diff(y, x='x'):
+    r"""Generate Latex code r'\frac{d y}{d x}'.
+
+    Arguments:
+        y {str} -- dependent variable
+
+    Keyword Arguments:
+        x {str} -- independent variable (default: {'x'})
+
+    Returns:
+        Command
+    """
+    return slash.frac(
+        (slash.mathrm('d').dumps()) + y, (slash.mathrm('d').dumps()) + x)
+
+
+def pdiff(y, x='x'):
+    """See diff."""
+    return slash.frac(slash.partial(y).dumps(), slash.partial(x).dumps())
+
+def test_command():
+    assert slash.frac('x', 'y').dumps() == r'\frac{x}{y}', \
+        "Unexpected result of slash.frac"
+
+
+def test_newcommand():
+    res = newcommand('mycmd', '#1+#2', default='lala').dumps()
+    assert res == r'\newcommand{\mycmd}[2][lala]{#1+#2}', \
+        "Unexpected result of newcommand"
+
+
+def test_dollar():
+    assert dollar('c_B').dumps() == r'$c_B$', \
+        "Unexpected result of dollar"
+
+
+def test_vector():
+    assert Vector([[1, 2], [1, 2]]).dumps() == r'''\begin{pmatrix}%
+1&2&1&2%
+\end{pmatrix}'''
+
+
+def test_diff():
+    assert diff('x', 'y').dumps() == r'\frac{\mathrm{d}x}{\mathrm{d}y}', \
+        "Unexpected result of diff"
