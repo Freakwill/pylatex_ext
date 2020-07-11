@@ -54,11 +54,10 @@ class Align(Environment):
         self.append(dumps_list([elm for elm in row], token=' & ', escape=False))
 
 
-# class Cases(MyEnvironment):
-#     """A class to wrap LaTeX's align environment."""
-#     escape = False
-#     content_separator = "\\\\\n"
-
+class Cases(Align):
+    """A class to wrap LaTeX's cases environment.
+    """
+    pass
 
 
 def sub(x, y):
@@ -93,16 +92,15 @@ class XeDocument(Document):
         import subprocess
         if isinstance(filename, str):
             filename = pathlib.Path(filename)
-        tex = filename.with_suffix('.tex')
+        tex_file = filename.with_suffix('.tex')
         if not tex.exists():
             self.write(filename)
-        command = ['latexmk', '-xelatex', '-f', str(tex)]
+        command = ['latexmk', '-xelatex', '-f', str(tex_file)]
         try:
             output = subprocess.check_output(command, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             # For all other errors print the output and raise the error
-            print(e.output.decode())
-            raise
+            raise e.output.decode()
         else:
             print(output.decode())
 
@@ -114,9 +112,15 @@ class XeDocument(Document):
                 # Otherwise just remove some file extensions.
                 extensions = ['aux', 'log', 'out', 'fls', 'fdb_latexmk']
                 for ext in extensions:
-                    if pathlib.Path(basename + '.' + ext).exists():
-                        os.remove(basename + '.' + ext)
+                    f = filename.with_suffix(ext)
+                    if f.exists():
+                        f.unlink()
 
+    def print(self, filename=None):
+        self.topdf(filename=filename)
+        import sh
+        sh.lpr('temp.pdf')
+        sh.rm('temp.pdf')
 
 
 def large(s, *, escape=True):
@@ -195,7 +199,7 @@ class ColumnVector(Vector):
 
 
 def newcommand(name, definition, n=-1, default=None, prefix=''):
-    '''generate the latex code of newcommand
+    r'''generate the latex code of newcommand
     
     Example:
     >>> newcommand('mycmd','#1+#2', -1, 'lala').dumps()
