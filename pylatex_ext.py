@@ -175,8 +175,8 @@ class Determinant(Matrix):
         ---
         matrix: numpy.ndarray
         """
+        # assert self.matrix.ndim == 2 and self.matrix.shape[1] == self.matrix.shape[0]
         super(Determinant, self).__init__(matrix, mtype='v', *args, **kwargs)
-        assert self.matrix.ndim == 2 and self.matrix.shape[1] == self.matrix.shape[0]
 
 
 class Vector(Matrix):
@@ -242,7 +242,7 @@ class Slash:
             return Command(command, arguments=args, **kwargs)
         return f
 
-slash = Slash()  # slash.frac('x', 'y').dumps() == '\frac{x}{y}'
+__ = Slash()  # __.frac('x', 'y').dumps() == '\frac{x}{y}'
 
 def diff(y, x='x'):
     r"""Generate Latex code r'\frac{d y}{d x}'.
@@ -256,17 +256,17 @@ def diff(y, x='x'):
     Returns:
         Command
     """
-    return slash.frac(
-        (slash.mathrm('d').dumps()) + y, (slash.mathrm('d').dumps()) + x)
+    return __.frac(
+        (__.mathrm('d').dumps()) + y, (__.mathrm('d').dumps()) + x)
 
 
 def pdiff(y, x='x'):
     """See diff."""
-    return slash.frac(slash.partial(y).dumps(), slash.partial(x).dumps())
+    return __.frac(__.partial(y).dumps(), __.partial(x).dumps())
 
 def test_command():
-    assert slash.frac('x', 'y').dumps() == r'\frac{x}{y}', \
-        "Unexpected result of slash.frac"
+    assert __.frac('x', 'y').dumps() == r'\frac{x}{y}', \
+        "Unexpected result of __.frac"
 
 
 def test_newcommand():
