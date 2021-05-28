@@ -22,7 +22,7 @@ class Slash:
             return Command(command, arguments=args, **kwargs)
         return f
 
-slash = Slash()  # slash.frac('x', 'y').dumps() == '\frac{x}{y}'
+__ = Slash()  # __.frac('x', 'y').dumps() == '\frac{x}{y}'
 
 def diff(y, x='x'):
     r"""Generate Latex code r'\frac{d y}{d x}'.
@@ -36,8 +36,8 @@ def diff(y, x='x'):
     Returns:
         Command
     """
-    return slash.frac(
-        (slash.mathrm('d').dumps()) + y, (slash.mathrm('d').dumps()) + x)
+    return __.frac(
+        (__.mathrm('d').dumps()) + y, (__.mathrm('d').dumps()) + x)
 
 ```
 
